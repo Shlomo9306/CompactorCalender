@@ -142,11 +142,11 @@ const WorkScheduleManager = () => {
         if (customer.id === id) {
           return {
             ...customer,
-            dates: customer.dates.filter(d => d !== dateKey)
+            dates: customer.dates?.filter(d => d !== dateKey)
           };
         }
         return customer;
-      }).filter(customer => customer.dates.length > 0); // Remove customers with no dates left
+      }).filter(customer => customer.dates?.length > 0); // Remove customers with no dates left
     });
   };
 
@@ -677,7 +677,7 @@ const WorkScheduleManager = () => {
                       </td>
                       <td className="border border-gray-300 p-3">
                         <div className="flex flex-wrap gap-1">
-                          {customer.dates.map((date, index) => (
+                          {customer.dates?.map((date, index) => (
                             <span
                               key={index}
                               className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs whitespace-nowrap"
@@ -687,7 +687,7 @@ const WorkScheduleManager = () => {
                           ))}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {customer.dates.length} scheduled days
+                          {customer.dates?.length} scheduled days
                         </div>
                       </td>
                       <td className="border border-gray-300 p-3 text-gray-600">
@@ -783,13 +783,13 @@ const WorkScheduleManager = () => {
             <div className="flex items-center">
               <span className="font-medium">Total Work Days:</span>
               <span className="ml-2 text-green-600 font-semibold">
-                {scheduleData.reduce((total, customer) => total + customer.dates.length, 0)}
+                {scheduleData.reduce((total, customer) => total + customer.dates?.length, 0)}
               </span>
             </div>
             <div className="flex items-center">
               <span className="font-medium">Unique Dates:</span>
               <span className="ml-2 text-purple-600 font-semibold">
-                {new Set(scheduleData.flatMap(customer => customer.dates)).size}
+                {new Set(scheduleData.flatMap(customer => customer?.dates)).size}
               </span>
             </div>
           </div>
