@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, {useEffect, useState, useMemo } from 'react';
 import { Plus, Edit2, Trash2, Save, X, Calendar, MapPin, Phone, FileText, ChevronLeft, ChevronRight, Table, Grid } from 'lucide-react';
 
 const WorkScheduleManager = () => {
