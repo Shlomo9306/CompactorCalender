@@ -1,29 +1,59 @@
-import React, {useEffect, useState, useMemo } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Calendar, MapPin, Phone, FileText, ChevronLeft, ChevronRight, Table, Grid,  Upload, Download } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  Plus, Edit2, Trash2, Save, X, Calendar, MapPin, Phone, FileText, 
+  ChevronLeft, ChevronRight, Table, Grid, Upload, Download 
+} from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const WorkScheduleManager = () => {
-  const [currentView, setCurrentView] = useState('table'); // 'table' or 'calendar'
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1)); // July 2025
+  const [currentView, setCurrentView] = useState('table');
+  const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1));
   
- 
- const [scheduleData, setScheduleData] = useState(() => {
+  const [scheduleData, setScheduleData] = useState(() => {
     const savedData = localStorage.getItem('workScheduleData');
     return savedData ? JSON.parse(savedData) : [
       {
-     
+        id: 1,
+        name: "Bnos Sanz (Budd Rd)",
+        address: "14 Budd Rd. Woodburne, NY, 12788",
+        phone: "845-304-4252",
+        dates: ["2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
+        notes: "Every Monday"
+      },
+      {
+        id: 2,
+        name: "Camp Aguda",
+        address: "140 upper Ferndale Road Ferndale 12734",
+        phone: "917-697-4263",
+        dates: ["2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
+        notes: "Mon & Fri till Aug 25"
+      },
+      {
+        id: 3,
+        name: "Camp Aguda (Fri)",
+        address: "140 Upper Ferndale Road Ferndale 12734",
+        phone: "917-697-4263",
+        dates: ["2025-07-03", "2025-07-11", "2025-07-18", "2025-07-25", "2025-08-01", "2025-08-08", "2025-08-15", "2025-08-22"],
+        notes: "Friday schedule"
+      },
+      {
+        id: 4,
+        name: "Camp Aguda Bnos",
+        address: "344 Ferndale Loomis Road Liberty 12754",
+        phone: "646-704-3562",
+        dates: ["2025-07-03", "2025-07-11", "2025-07-18", "2025-07-25", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
+        notes: "Friday schedule"
+      },
+      {
+        id: 5,
+        name: "Landaus",
+        address: "3 Railroad Plaza Ext South Fallsburg 12779",
+        phone: "347-865-0486",
+        dates: ["2025-06-23", "2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25", "2025-09-02"],
+        notes: "Every Monday morning"
       }
     ];
   });
-
-  // Save to localStorage whenever scheduleData changes
-  useEffect(() => {
-    localStorage.setItem('workScheduleData', JSON.stringify(scheduleData));
-  }, [scheduleData]);
-
-
-
-
-
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -35,53 +65,17 @@ const WorkScheduleManager = () => {
     notes: ''
   });
   const [dateInput, setDateInput] = useState('');
- const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showMonthPicker, setShowMonthPicker] = useState(false);
 
+  useEffect(() => {
+    localStorage.setItem('workScheduleData', JSON.stringify(scheduleData));
+  }, [scheduleData]);
 
-
-// File handling functions
-  const handleExportData = () => {
-    const dataStr = JSON.stringify(scheduleData, null, 2);
-    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    
-    const exportFileDefaultName = `work-schedule-${new Date().toISOString().slice(0,10)}.json`;
-    
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
-    linkElement.click();
-  };
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target.result);
-        if (Array.isArray(importedData)) {
-          if (window.confirm('Importing data will replace your current schedule. Continue?')) {
-            setScheduleData(importedData);
-          }
-        } else {
-          alert('Invalid file format. Please import a valid JSON file.');
-        }
-      } catch (error) {
-        alert('Error parsing file. Please check the file format.');
-      }
-    };
-    reader.readAsText(file);
-  };
-
-
-  // Calendar-specific code
   const eventsMap = useMemo(() => {
     const map = new Map();
     scheduleData.forEach(customer => {
-      customer.dates?.forEach(dateStr => {
+      customer.dates.forEach(dateStr => {
         const date = new Date(dateStr);
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         if (!map.has(key)) {
@@ -112,9 +106,8 @@ const WorkScheduleManager = () => {
   };
 
   const handleAddCustomer = () => {
-    resetForm();
     setShowAddForm(true);
-    setShowQuickAdd(false);
+    resetForm();
   };
 
   const handleEditCustomer = (customer) => {
@@ -127,27 +120,12 @@ const WorkScheduleManager = () => {
     });
     setEditingId(customer.id);
     setShowAddForm(true);
-    setShowQuickAdd(false);
   };
 
   const handleDeleteCustomer = (id) => {
     if (window.confirm('Are you sure you want to delete this customer?')) {
       setScheduleData(prev => prev.filter(customer => customer.id !== id));
     }
-  };
-
-  const handleDeleteWorkFromCalendar = (id, dateKey) => {
-    setScheduleData(prev => {
-      return prev.map(customer => {
-        if (customer.id === id) {
-          return {
-            ...customer,
-            dates: customer.dates?.filter(d => d !== dateKey)
-          };
-        }
-        return customer;
-      }).filter(customer => customer.dates?.length > 0); // Remove customers with no dates left
-    });
   };
 
   const handleSaveCustomer = () => {
@@ -174,14 +152,22 @@ const WorkScheduleManager = () => {
   };
 
   const handleAddDate = () => {
-    if (dateInput && !formData.dates.includes(dateInput)) {
+  if (dateInput) {
+    // Parse the date string and adjust for timezone
+    const date = new Date(dateInput);
+    // Add the timezone offset to get the correct date
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    const formattedDate = date.toISOString().split('T')[0];
+    
+    if (!formData.dates.includes(formattedDate)) {
       setFormData(prev => ({
         ...prev,
-        dates: [...prev.dates, dateInput].sort()
+        dates: [...prev.dates, formattedDate].sort()
       }));
       setDateInput('');
     }
-  };
+  }
+};
 
   const handleRemoveDate = (dateToRemove) => {
     setFormData(prev => ({
@@ -191,13 +177,15 @@ const WorkScheduleManager = () => {
   };
 
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric'
-    });
-  };
+  const date = new Date(dateStr);
+  // Adjust for timezone when displaying
+  date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+  return date.toLocaleDateString('en-US', { 
+    weekday: 'short',
+    month: 'short', 
+    day: 'numeric'
+  });
+};
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -205,7 +193,6 @@ const WorkScheduleManager = () => {
     }
   };
 
-  // Calendar functions
   const getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
@@ -229,23 +216,22 @@ const WorkScheduleManager = () => {
     });
   };
 
-  const navigateToMonthYear = (month, year) => {
-    setCurrentDate(new Date(year, month, 1));
-    setShowMonthPicker(false);
-  };
-
-  const openQuickAdd = (dateKey) => {
-    setSelectedDate(dateKey);
-    setFormData({
-      name: '',
-      address: '',
-      phone: '',
-      dates: [dateKey],
-      notes: ''
-    });
-    setShowQuickAdd(true);
-    setShowAddForm(false);
-  };
+ const openQuickAdd = (dateKey) => {
+  setSelectedDate(dateKey);
+  // Parse and adjust the date for timezone
+  const date = new Date(dateKey);
+  date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+  const formattedDate = date.toISOString().split('T')[0];
+  
+  setFormData({
+    name: '',
+    address: '',
+    phone: '',
+    dates: [formattedDate],
+    notes: ''
+  });
+  setShowQuickAdd(true);
+};
 
   const handleQuickAdd = () => {
     if (!formData.name.trim() || !formData.address.trim()) {
@@ -261,53 +247,138 @@ const WorkScheduleManager = () => {
     resetForm();
   };
 
-  const renderMonthYearPicker = () => {
-    const currentYear = currentDate.getFullYear();
-    const years = [currentYear - 1, currentYear, currentYear + 1];
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-
-    return (
-      <div className="absolute z-10 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 w-64">
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {years.map(year => (
-            <button
-              key={year}
-              onClick={() => navigateToMonthYear(currentDate.getMonth(), year)}
-              className={`p-2 rounded ${currentYear === year ? 'bg-blue-100 font-semibold' : 'hover:bg-gray-100'}`}
-            >
-              {year}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          {months.map((month, index) => (
-            <button
-              key={month}
-              onClick={() => navigateToMonthYear(index, currentYear)}
-              className={`p-2 rounded ${currentDate.getMonth() === index ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}`}
-            >
-              {month.substring(0, 3)}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
+  const handleExportData = () => {
+    const dataStr = JSON.stringify(scheduleData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `work-schedule-${new Date().toISOString().slice(0,10)}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
   };
+
+  const handleFileImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        const processedData = processExcelData(jsonData);
+        
+        if (window.confirm(`Import ${processedData.length} customers? This will replace your current schedule.`)) {
+          setScheduleData(processedData);
+        }
+      } catch (error) {
+        alert('Error processing file. Please check the file format.');
+        console.error('Error processing file:', error);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const processExcelData = (excelRows) => {
+    const results = [];
+    
+    for (let i = 1; i < excelRows.length; i++) {
+      const row = excelRows[i];
+      if (!row || !row[0]) continue;
+
+      const customerInfo = extractCustomerInfo(row[0]);
+      if (!customerInfo.name) continue;
+
+      const dates = [];
+      for (let j = 3; j < row.length; j++) {
+        if (row[j] && isValidDate(row[j])) {
+          dates.push(formatExcelDate(row[j]));
+        }
+      }
+
+      results.push({
+        id: Date.now() + i,
+        name: customerInfo.name,
+        address: customerInfo.address,
+        phone: customerInfo.phone,
+        dates: dates,
+        notes: row[1] || row[2] || ''
+      });
+    }
+
+    return results;
+  };
+
+  const extractCustomerInfo = (str) => {
+    const result = { name: '', address: '', phone: '' };
+    
+    const parts = str.split('-').map(part => part.trim());
+    
+    const nameAddress = parts[0].trim();
+    const lastComma = nameAddress.lastIndexOf(',');
+    
+    if (lastComma > 0) {
+      result.name = nameAddress.substring(0, lastComma).trim();
+      result.address = nameAddress.substring(lastComma + 1).trim();
+    } else {
+      result.name = nameAddress;
+    }
+    
+    if (parts.length > 1 && parts[1]) {
+      result.phone = parts[1].replace(/\D/g, '');
+      if (result.phone.length === 10) {
+        result.phone = `${result.phone.substring(0, 3)}-${result.phone.substring(3, 6)}-${result.phone.substring(6)}`;
+      }
+    }
+    
+    return result;
+  };
+
+  const isValidDate = (value) => {
+    if (value instanceof Date) return true;
+    if (typeof value === 'string' && !isNaN(new Date(value).getTime())) return true;
+    if (typeof value === 'number' && value > 0) return true;
+    return false;
+  };
+
+  const formatExcelDate = (value) => {
+  let date;
+  
+  if (typeof value === 'number') {
+    // Excel serial date (days since 1900)
+    date = new Date((value - (25567 + 2)) * 86400 * 1000);
+  } else if (value instanceof Date) {
+    date = value;
+  } else {
+    date = new Date(value);
+  }
+  
+  // Adjust for timezone
+  date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+  
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
+
 
   const renderCalendarDays = () => {
     const daysInMonth = getDaysInMonth(currentDate);
     const firstDay = getFirstDayOfMonth(currentDate);
     const days = [];
     
-    // Empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="min-h-40 border border-gray-200 bg-gray-50"></div>);
     }
     
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const dayEvents = eventsMap.get(dateKey) || [];
@@ -338,20 +409,14 @@ const WorkScheduleManager = () => {
               >
                 <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex space-x-1">
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditCustomer(event);
-                    }}
+                    onClick={() => handleEditCustomer(event)}
                     className="p-1 rounded hover:bg-blue-200 text-blue-700"
                     title="Edit"
                   >
                     <Edit2 className="w-3 h-3" />
                   </button>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteWorkFromCalendar(event.id, event.date);
-                    }}
+                    onClick={() => handleDeleteCustomer(event.id)}
                     className="p-1 rounded hover:bg-red-200 text-red-700"
                     title="Delete"
                   >
@@ -395,14 +460,12 @@ const WorkScheduleManager = () => {
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg p-6">
-        {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center space-x-4">
             <Calendar className="w-8 h-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-800">Work Schedule Manager</h1>
           </div>
           <div className="flex items-center space-x-4">
-            {/* View Toggle */}
             <div className="flex bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setCurrentView('table')}
@@ -428,17 +491,14 @@ const WorkScheduleManager = () => {
               </button>
             </div>
             
-
-
- {/* File operations */}
             <div className="flex space-x-2">
               <label className="cursor-pointer bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center space-x-2">
                 <Upload className="w-4 h-4" />
-                <span>Import</span>
+                <span>Import Excel</span>
                 <input 
                   type="file" 
-                  accept=".json" 
-                  onChange={handleFileChange}
+                  accept=".xlsx,.xls,.csv" 
+                  onChange={handleFileImport}
                   className="hidden"
                 />
               </label>
@@ -450,8 +510,7 @@ const WorkScheduleManager = () => {
                 <span>Export</span>
               </button>
             </div>
-
-
+            
             <button
               onClick={handleAddCustomer}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
@@ -459,31 +518,20 @@ const WorkScheduleManager = () => {
               <Plus className="w-5 h-5" />
               <span>Add Customer</span>
             </button>
-
-
-
-
-
-
           </div>
         </div>
 
-        {/* Calendar View Header (only shown in calendar view) */}
         {currentView === 'calendar' && (
-          <div className="flex items-center justify-center space-x-4 mb-6 relative">
+          <div className="flex items-center justify-center space-x-4 mb-6">
             <button
               onClick={() => navigateMonth(-1)}
               className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button
-              onClick={() => setShowMonthPicker(!showMonthPicker)}
-              className="text-xl font-semibold text-gray-700 min-w-48 text-center hover:bg-gray-100 p-2 rounded-lg"
-            >
+            <h2 className="text-xl font-semibold text-gray-700 min-w-48 text-center">
               {formatMonthYear(currentDate)}
-            </button>
-            {showMonthPicker && renderMonthYearPicker()}
+            </h2>
             <button
               onClick={() => navigateMonth(1)}
               className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600"
@@ -493,7 +541,6 @@ const WorkScheduleManager = () => {
           </div>
         )}
 
-        {/* Today's Schedule (only shown in calendar view) */}
         {currentView === 'calendar' && todayEvents.length > 0 && (
           <div className="mb-6 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-lg">
             <h3 className="text-lg font-semibold text-yellow-800 mb-3">Today's Schedule</h3>
@@ -518,7 +565,6 @@ const WorkScheduleManager = () => {
           </div>
         )}
 
-        {/* Add/Edit Form */}
         {(showAddForm || showQuickAdd) && (
           <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">
@@ -575,7 +621,12 @@ const WorkScheduleManager = () => {
                   <input
                     type="date"
                     value={dateInput}
-                    onChange={(e) => setDateInput(e.target.value)}
+                    onChange={(e) => {
+    // Parse and adjust the date for display
+    const date = new Date(e.target.value);
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    setDateInput(date.toISOString().split('T')[0]);
+  }}
                     onKeyPress={handleKeyPress}
                     className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -639,9 +690,7 @@ const WorkScheduleManager = () => {
           </div>
         )}
 
-        {/* Main Content Area */}
         {currentView === 'table' ? (
-          // Table View
           <div>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse border border-gray-300">
@@ -677,7 +726,7 @@ const WorkScheduleManager = () => {
                       </td>
                       <td className="border border-gray-300 p-3">
                         <div className="flex flex-wrap gap-1">
-                          {customer.dates?.map((date, index) => (
+                          {customer.dates.map((date, index) => (
                             <span
                               key={index}
                               className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs whitespace-nowrap"
@@ -687,7 +736,7 @@ const WorkScheduleManager = () => {
                           ))}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {customer.dates?.length} scheduled days
+                          {customer.dates.length} scheduled days
                         </div>
                       </td>
                       <td className="border border-gray-300 p-3 text-gray-600">
@@ -731,17 +780,14 @@ const WorkScheduleManager = () => {
             )}
           </div>
         ) : (
-          // Calendar View  
           <div>
             <div className="grid grid-cols-7 gap-0 border border-gray-200 rounded-lg overflow-hidden">
-              {/* Day headers */}
               {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
                 <div key={day} className="bg-gray-100 p-3 text-center font-semibold text-gray-700 border-b border-gray-200">
                   {day}
                 </div>
               ))}
               
-              {/* Calendar days */}
               {renderCalendarDays()}
             </div>
 
@@ -772,7 +818,6 @@ const WorkScheduleManager = () => {
           </div>
         )}
 
-        {/* Summary */}
         <div className="mt-6 p-4 bg-gray-100 rounded-lg">
           <h3 className="text-lg font-semibold text-gray-800 mb-2">Summary</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -783,13 +828,13 @@ const WorkScheduleManager = () => {
             <div className="flex items-center">
               <span className="font-medium">Total Work Days:</span>
               <span className="ml-2 text-green-600 font-semibold">
-                {scheduleData.reduce((total, customer) => total + customer.dates?.length, 0)}
+                {scheduleData.reduce((total, customer) => total + customer.dates.length, 0)}
               </span>
             </div>
             <div className="flex items-center">
               <span className="font-medium">Unique Dates:</span>
               <span className="ml-2 text-purple-600 font-semibold">
-                {new Set(scheduleData.flatMap(customer => customer?.dates)).size}
+                {new Set(scheduleData.flatMap(customer => customer.dates)).size}
               </span>
             </div>
           </div>
