@@ -81,7 +81,7 @@ const WorkScheduleManager = () => {
   const eventsMap = useMemo(() => {
     const map = new Map();
     scheduleData.forEach(customer => {
-      customer.dates.forEach(dateStr => {
+      customer.dates?.forEach(dateStr => {
         const date = new Date(dateStr);
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         if (!map.has(key)) {
