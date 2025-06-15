@@ -13,6 +13,7 @@ const WorkScheduleManager = () => {
   const [availableSheets, setAvailableSheets] = useState([]);
   const [selectedSheet, setSelectedSheet] = useState('');
   const [fileData, setFileData] = useState(null);
+ const [importError, setImportError] = useState('');
 
   
   const [scheduleData, setScheduleData] = useState(() => {
@@ -227,57 +228,85 @@ const WorkScheduleManager = () => {
     linkElement.click();
   };
 
-  const handleFileSelect = (event) => {
+ const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
+    setImportError('');
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         
-        // Get sheet names and store workbook data
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw new Error('No sheets found in this file');
+        }
+
         setAvailableSheets(workbook.SheetNames);
         setFileData(workbook);
+        setSelectedSheet(workbook.SheetNames[0]);
         setImportModalOpen(true);
-        
-        // Select first sheet by default
-        if (workbook.SheetNames.length > 0) {
-          setSelectedSheet(workbook.SheetNames[0]);
-        }
       } catch (error) {
-        alert('Error processing file. Please check the file format.');
-        console.error('Error processing file:', error);
+        setImportError(`Error reading file: ${error.message}`);
+        console.error('File read error:', error);
       }
+    };
+    reader.onerror = () => {
+      setImportError('Failed to read file');
     };
     reader.readAsArrayBuffer(file);
   };
 
   // Process the selected sheet
   const handleImportConfirm = () => {
-    if (!fileData || !selectedSheet) return;
+    if (!fileData || !selectedSheet) {
+      setImportError('No sheet selected');
+      return;
+    }
 
     try {
       const worksheet = fileData.Sheets[selectedSheet];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      if (!worksheet) {
+        throw new Error('Selected sheet not found');
+      }
 
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
       const processedData = processExcelData(jsonData);
-      
-      if (window.confirm(`Import ${processedData.length} customers from "${selectedSheet}"? This will replace your current schedule.`)) {
+
+      if (!processedData || processedData.length === 0) {
+        throw new Error('No valid data found in this sheet');
+      }
+
+      if (window.confirm(`Import ${processedData.length} customers from "${selectedSheet}"?`)) {
         setScheduleData(processedData);
+        setImportModalOpen(false);
+        setFileData(null);
       }
     } catch (error) {
-      alert('Error processing selected sheet.');
-      console.error('Error processing sheet:', error);
-    } finally {
-      setImportModalOpen(false);
-      setFileData(null);
+      setImportError(`Error processing sheet: ${error.message}`);
+      console.error('Sheet processing error:', error);
     }
   };
-  const processExcelData = (excelRows) => {
-    const results = [];
+
+
+   const processExcelData = (excelRows) => {
+    if (!excelRows || excelRows.length < 2) return [];
     
+    const results = [];
+    const dateColumns = [];
+    
+    // Identify columns that contain dates (starting from column 3)
+    for (let col = 3; col < excelRows[0].length; col++) {
+      if (excelRows[0][col] && typeof excelRows[0][col] === 'string' && 
+          excelRows[0][col].toLowerCase().includes('date')) {
+        dateColumns.push(col);
+      } else if (excelRows.some(row => isValidDate(row[col]))) {
+        dateColumns.push(col);
+      }
+    }
+
+    // Process each row
     for (let i = 1; i < excelRows.length; i++) {
       const row = excelRows[i];
       if (!row || !row[0]) continue;
@@ -286,24 +315,31 @@ const WorkScheduleManager = () => {
       if (!customerInfo.name) continue;
 
       const dates = [];
-      for (let j = 3; j < row.length; j++) {
-        if (row[j] && isValidDate(row[j])) {
-          dates.push(formatExcelDate(row[j]));
+      // Check both identified date columns and columns 3+
+      const colsToCheck = dateColumns.length > 0 ? dateColumns : 
+                         Array.from({length: row.length - 3}, (_, j) => j + 3);
+      
+      for (const col of colsToCheck) {
+        if (row[col] && isValidDate(row[col])) {
+          dates.push(formatExcelDate(row[col]));
         }
       }
 
-      results.push({
-        id: Date.now() + i,
-        name: customerInfo.name,
-        address: customerInfo.address,
-        phone: customerInfo.phone,
-        dates: dates,
-        notes: row[1] || row[2] || ''
-      });
+      if (dates.length > 0) {
+        results.push({
+          id: Date.now() + i,
+          name: customerInfo.name,
+          address: customerInfo.address,
+          phone: customerInfo.phone,
+          dates: dates,
+          notes: [row[1], row[2]].filter(Boolean).join(' | ')
+        });
+      }
     }
 
     return results;
   };
+
 
   const extractCustomerInfo = (str) => {
     const result = { name: '', address: '', phone: '' };
@@ -519,7 +555,7 @@ const WorkScheduleManager = () => {
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Available Sheets
+                 Available Sheets ({availableSheets.length})
                 </label>
                 <select
                   value={selectedSheet}
@@ -527,26 +563,42 @@ const WorkScheduleManager = () => {
                   className="w-full p-2 border border-gray-300 rounded"
                 >
                   {availableSheets.map((sheet, index) => (
-                    <option key={index} value={sheet}>
-                      {sheet}
+                   <option key={index} value={sheet}>
+                      {sheet} {index === 0 ? "(First Sheet)" : ""}
                     </option>
                   ))}
                 </select>
+
+ {importError && (
+                  <div className="text-red-500 text-sm mb-4">
+                    {importError}
+                  </div>
+                )}
+
               </div>
 
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={() => setImportModalOpen(false)}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleImportConfirm}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Import Selected Sheet
-                </button>
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-500">
+                  {fileData && `File: ${fileData.FileName || 'Selected file'}`}
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => {
+                      setImportModalOpen(false);
+                      setImportError('');
+                    }}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleImportConfirm}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    disabled={!selectedSheet}
+                  >
+                    Import
+                  </button>
+                </div>
               </div>
             </div>
           </div>
