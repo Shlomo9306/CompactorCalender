@@ -58,7 +58,6 @@ const WorkScheduleManager = () => {
     notes: ''
   });
   const [dateInput, setDateInput] = useState('');
-  const [selectedDate, setSelectedDate] = useState(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
 
