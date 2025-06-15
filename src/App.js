@@ -8,6 +8,12 @@ import * as XLSX from 'xlsx';
 const WorkScheduleManager = () => {
   const [currentView, setCurrentView] = useState('table');
   const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1));
+
+ const [importModalOpen, setImportModalOpen] = useState(false);
+  const [availableSheets, setAvailableSheets] = useState([]);
+  const [selectedSheet, setSelectedSheet] = useState('');
+  const [fileData, setFileData] = useState(null);
+
   
   const [scheduleData, setScheduleData] = useState(() => {
     const savedData = localStorage.getItem('workScheduleData');
