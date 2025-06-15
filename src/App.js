@@ -221,7 +221,7 @@ const WorkScheduleManager = () => {
     linkElement.click();
   };
 
-  const handleFileImport = (event) => {
+  const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -230,14 +230,15 @@ const WorkScheduleManager = () => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        const processedData = processExcelData(jsonData);
         
-        if (window.confirm(`Import ${processedData.length} customers? This will replace your current schedule.`)) {
-          setScheduleData(processedData);
+        // Get sheet names and store workbook data
+        setAvailableSheets(workbook.SheetNames);
+        setFileData(workbook);
+        setImportModalOpen(true);
+        
+        // Select first sheet by default
+        if (workbook.SheetNames.length > 0) {
+          setSelectedSheet(workbook.SheetNames[0]);
         }
       } catch (error) {
         alert('Error processing file. Please check the file format.');
@@ -247,6 +248,27 @@ const WorkScheduleManager = () => {
     reader.readAsArrayBuffer(file);
   };
 
+  // Process the selected sheet
+  const handleImportConfirm = () => {
+    if (!fileData || !selectedSheet) return;
+
+    try {
+      const worksheet = fileData.Sheets[selectedSheet];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      const processedData = processExcelData(jsonData);
+      
+      if (window.confirm(`Import ${processedData.length} customers from "${selectedSheet}"? This will replace your current schedule.`)) {
+        setScheduleData(processedData);
+      }
+    } catch (error) {
+      alert('Error processing selected sheet.');
+      console.error('Error processing sheet:', error);
+    } finally {
+      setImportModalOpen(false);
+      setFileData(null);
+    }
+  };
   const processExcelData = (excelRows) => {
     const results = [];
     
@@ -460,7 +482,7 @@ const WorkScheduleManager = () => {
                 <input 
                   type="file" 
                   accept=".xlsx,.xls,.csv" 
-                  onChange={handleFileImport}
+                 onChange={handleFileSelect}
                   className="hidden"
                 />
               </label>
@@ -482,6 +504,48 @@ const WorkScheduleManager = () => {
             </button>
           </div>
         </div>
+
+ {/* Sheet Selection Modal */}
+        {importModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <h3 className="text-lg font-semibold mb-4">Select Sheet to Import</h3>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Available Sheets
+                </label>
+                <select
+                  value={selectedSheet}
+                  onChange={(e) => setSelectedSheet(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded"
+                >
+                  {availableSheets.map((sheet, index) => (
+                    <option key={index} value={sheet}>
+                      {sheet}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setImportModalOpen(false)}
+                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImportConfirm}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Import Selected Sheet
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {currentView === 'calendar' && (
           <div className="flex items-center justify-center space-x-4 mb-6">
