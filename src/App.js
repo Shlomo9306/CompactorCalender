@@ -5,48 +5,25 @@ const WorkScheduleManager = () => {
   const [currentView, setCurrentView] = useState('table'); // 'table' or 'calendar'
   const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1)); // July 2025
   
-  const [scheduleData, setScheduleData] = useState([
-    {
-      id: 1,
-      name: "Bnos Sanz (Budd Rd)",
-      address: "14 Budd Rd. Woodburne, NY, 12788",
-      phone: "845-304-4252",
-      dates: ["2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
-      notes: "Every Monday"
-    },
-    {
-      id: 2,
-      name: "Camp Aguda",
-      address: "140 upper Ferndale Road Ferndale 12734",
-      phone: "917-697-4263",
-      dates: ["2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
-      notes: "Mon & Fri till Aug 25"
-    },
-    {
-      id: 3,
-      name: "Camp Aguda (Fri)",
-      address: "140 Upper Ferndale Road Ferndale 12734",
-      phone: "917-697-4263",
-      dates: ["2025-07-03", "2025-07-11", "2025-07-18", "2025-07-25", "2025-08-01", "2025-08-08", "2025-08-15", "2025-08-22"],
-      notes: "Friday schedule"
-    },
-    {
-      id: 4,
-      name: "Camp Aguda Bnos",
-      address: "344 Ferndale Loomis Road Liberty 12754",
-      phone: "646-704-3562",
-      dates: ["2025-07-03", "2025-07-11", "2025-07-18", "2025-07-25", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
-      notes: "Friday schedule"
-    },
-    {
-      id: 5,
-      name: "Landaus",
-      address: "3 Railroad Plaza Ext South Fallsburg 12779",
-      phone: "347-865-0486",
-      dates: ["2025-06-23", "2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25", "2025-09-02"],
-      notes: "Every Monday morning"
-    }
-  ]);
+ 
+ const [scheduleData, setScheduleData] = useState(() => {
+    const savedData = localStorage.getItem('workScheduleData');
+    return savedData ? JSON.parse(savedData) : [
+      {
+     
+      }
+    ];
+  });
+
+  // Save to localStorage whenever scheduleData changes
+  useEffect(() => {
+    localStorage.setItem('workScheduleData', JSON.stringify(scheduleData));
+  }, [scheduleData]);
+
+
+
+
+
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -61,6 +38,44 @@ const WorkScheduleManager = () => {
  const [selectedDate, setSelectedDate] = useState(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+
+
+
+// File handling functions
+  const handleExportData = () => {
+    const dataStr = JSON.stringify(scheduleData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `work-schedule-${new Date().toISOString().slice(0,10)}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        if (Array.isArray(importedData)) {
+          if (window.confirm('Importing data will replace your current schedule. Continue?')) {
+            setScheduleData(importedData);
+          }
+        } else {
+          alert('Invalid file format. Please import a valid JSON file.');
+        }
+      } catch (error) {
+        alert('Error parsing file. Please check the file format.');
+      }
+    };
+    reader.readAsText(file);
+  };
+
 
   // Calendar-specific code
   const eventsMap = useMemo(() => {
@@ -413,6 +428,30 @@ const WorkScheduleManager = () => {
               </button>
             </div>
             
+
+
+ {/* File operations */}
+            <div className="flex space-x-2">
+              <label className="cursor-pointer bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center space-x-2">
+                <Upload className="w-4 h-4" />
+                <span>Import</span>
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </label>
+              <button
+                onClick={handleExportData}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export</span>
+              </button>
+            </div>
+
+
             <button
               onClick={handleAddCustomer}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
@@ -420,6 +459,12 @@ const WorkScheduleManager = () => {
               <Plus className="w-5 h-5" />
               <span>Add Customer</span>
             </button>
+
+
+
+
+
+
           </div>
         </div>
 
