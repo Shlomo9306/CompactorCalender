@@ -13,44 +13,6 @@ const WorkScheduleManager = () => {
     const savedData = localStorage.getItem('workScheduleData');
     return savedData ? JSON.parse(savedData) : [
       {
-        id: 1,
-        name: "Bnos Sanz (Budd Rd)",
-        address: "14 Budd Rd. Woodburne, NY, 12788",
-        phone: "845-304-4252",
-        dates: ["2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
-        notes: "Every Monday"
-      },
-      {
-        id: 2,
-        name: "Camp Aguda",
-        address: "140 upper Ferndale Road Ferndale 12734",
-        phone: "917-697-4263",
-        dates: ["2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
-        notes: "Mon & Fri till Aug 25"
-      },
-      {
-        id: 3,
-        name: "Camp Aguda (Fri)",
-        address: "140 Upper Ferndale Road Ferndale 12734",
-        phone: "917-697-4263",
-        dates: ["2025-07-03", "2025-07-11", "2025-07-18", "2025-07-25", "2025-08-01", "2025-08-08", "2025-08-15", "2025-08-22"],
-        notes: "Friday schedule"
-      },
-      {
-        id: 4,
-        name: "Camp Aguda Bnos",
-        address: "344 Ferndale Loomis Road Liberty 12754",
-        phone: "646-704-3562",
-        dates: ["2025-07-03", "2025-07-11", "2025-07-18", "2025-07-25", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25"],
-        notes: "Friday schedule"
-      },
-      {
-        id: 5,
-        name: "Landaus",
-        address: "3 Railroad Plaza Ext South Fallsburg 12779",
-        phone: "347-865-0486",
-        dates: ["2025-06-23", "2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25", "2025-09-02"],
-        notes: "Every Monday morning"
       }
     ];
   });
@@ -75,7 +37,7 @@ const WorkScheduleManager = () => {
   const eventsMap = useMemo(() => {
     const map = new Map();
     scheduleData.forEach(customer => {
-      customer.dates.forEach(dateStr => {
+      customer.dates?.forEach(dateStr => {
         const date = new Date(dateStr);
         const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         if (!map.has(key)) {
@@ -726,7 +688,7 @@ const WorkScheduleManager = () => {
                       </td>
                       <td className="border border-gray-300 p-3">
                         <div className="flex flex-wrap gap-1">
-                          {customer.dates.map((date, index) => (
+                          {customer.dates?.map((date, index) => (
                             <span
                               key={index}
                               className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs whitespace-nowrap"
@@ -736,7 +698,7 @@ const WorkScheduleManager = () => {
                           ))}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {customer.dates.length} scheduled days
+                          {customer.dates?.length} scheduled days
                         </div>
                       </td>
                       <td className="border border-gray-300 p-3 text-gray-600">
@@ -828,13 +790,13 @@ const WorkScheduleManager = () => {
             <div className="flex items-center">
               <span className="font-medium">Total Work Days:</span>
               <span className="ml-2 text-green-600 font-semibold">
-                {scheduleData.reduce((total, customer) => total + customer.dates.length, 0)}
+                {scheduleData.reduce((total, customer) => total + customer.dates?.length, 0)}
               </span>
             </div>
             <div className="flex items-center">
               <span className="font-medium">Unique Dates:</span>
               <span className="ml-2 text-purple-600 font-semibold">
-                {new Set(scheduleData.flatMap(customer => customer.dates)).size}
+                {new Set(scheduleData.flatMap(customer => customer.dates))?.size}
               </span>
             </div>
           </div>
