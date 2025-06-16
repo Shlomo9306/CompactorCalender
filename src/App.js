@@ -41,23 +41,24 @@ const WorkScheduleManager = () => {
     localStorage.setItem('workScheduleData', JSON.stringify(scheduleData));
   }, [scheduleData]);
 
-  const eventsMap = useMemo(() => {
-    const map = new Map();
-    scheduleData.forEach(customer => {
-      customer.dates?.forEach(dateStr => {
-        const date = new Date(dateStr);
-        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        if (!map.has(key)) {
-          map.set(key, []);
-        }
-        map.get(key).push({
-          ...customer,
-          date: dateStr
-        });
+ const eventsMap = useMemo(() => {
+  const map = new Map();
+  scheduleData.forEach(customer => {
+    customer.dates?.forEach(dateStr => {
+      // Parse the date without timezone adjustments
+      const date = new Date(dateStr);
+      const key = date.toISOString().split('T')[0]; // Use ISO format for consistency
+      if (!map.has(key)) {
+        map.set(key, []);
+      }
+      map.get(key).push({
+        ...customer,
+        date: dateStr
       });
     });
-    return map;
-  }, [scheduleData]);
+  });
+  return map;
+}, [scheduleData]);
 
   const resetForm = () => {
     setFormData({
@@ -147,8 +148,6 @@ const WorkScheduleManager = () => {
 
 const formatDate = (dateStr) => {
   const date = new Date(dateStr);
-  // Add timezone offset to display correctly
-  date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
   return date.toLocaleDateString('en-US', { 
     weekday: 'short',
     month: 'short', 
@@ -365,22 +364,19 @@ const parseExcelDate = (value) => {
     
     // Handle Excel serial dates (numbers)
     if (typeof value === 'number') {
-      // Excel serial date (days since 1900) with timezone adjustment
-      const excelEpoch = new Date(1899, 11, 31);
-      const excelDate = new Date(excelEpoch.getTime() + (value * 24 * 60 * 60 * 1000));
-      
-      // Adjust for timezone offset
-      const timezoneOffset = excelDate.getTimezoneOffset() * 60000;
-      date = new Date(excelDate.getTime() + timezoneOffset);
+      // Excel serial date (days since 1900)
+      date = new Date(Math.round((value - 25569) * 86400 * 1000));
     } 
     // Handle string dates
     else if (typeof value === 'string') {
-      // Create date in local timezone
-      const [month, day, year] = value.split('/').map(Number);
-      date = new Date(year, month - 1, day);
+      // Try parsing as ISO date first
+      date = new Date(value);
       
-      // Adjust for timezone
-      date.setHours(12, 0, 0, 0); // Set to noon to avoid DST issues
+      // If that fails, try MM/DD/YYYY format
+      if (isNaN(date.getTime())) {
+        const [month, day, year] = value.split('/').map(Number);
+        date = new Date(year, month - 1, day);
+      }
     }
     // Handle Date objects directly
     else if (value instanceof Date) {
@@ -488,9 +484,8 @@ const parseDateString = (value, format) => {
   
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-    // Adjust for timezone when creating the key
-    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
-    const dateKey = date.toISOString().split('T')[0];
+    // Use local date string for matching
+    const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     
     const dayEvents = eventsMap.get(dateKey) || [];
     
@@ -562,11 +557,11 @@ const parseDateString = (value, format) => {
     return days;
   };
 
-  const todayEvents = useMemo(() => {
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    return eventsMap.get(todayKey) || [];
-  }, [eventsMap]);
+const todayEvents = useMemo(() => {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  return eventsMap.get(todayKey) || [];
+}, [eventsMap]);
 
   return (
     <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
