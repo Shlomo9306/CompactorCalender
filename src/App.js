@@ -260,69 +260,66 @@ const WorkScheduleManager = () => {
 
   // Process the selected sheet
   const handleImportConfirm = () => {
-    if (!fileData || !selectedSheet) {
-      setImportError('No sheet selected');
-      return;
+  if (!fileData || !selectedSheet) {
+    setImportError('No sheet selected');
+    return;
+  }
+
+  try {
+    const worksheet = fileData.Sheets[selectedSheet];
+    if (!worksheet) throw new Error('Selected sheet not found');
+
+    // Convert to JSON with header row
+    const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: '',
+      raw: false
+    });
+
+    const processedData = processExcelData(jsonData);
+    
+    if (processedData.length === 0) {
+      throw new Error('No valid data found in this sheet');
     }
 
-    try {
-      const worksheet = fileData.Sheets[selectedSheet];
-      if (!worksheet) {
-        throw new Error('Selected sheet not found');
-      }
-
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-      const processedData = processExcelData(jsonData);
-
-      if (!processedData || processedData.length === 0) {
-        throw new Error('No valid data found in this sheet');
-      }
-
-      if (window.confirm(`Import ${processedData.length} customers from "${selectedSheet}"?`)) {
-        setScheduleData(processedData);
-        setImportModalOpen(false);
-        setFileData(null);
-      }
-    } catch (error) {
-      setImportError(`Error processing sheet: ${error.message}`);
-      console.error('Sheet processing error:', error);
-    }
-  };
+    setScheduleData(processedData);
+    setImportModalOpen(false);
+  } catch (error) {
+    setImportError(error.message);
+  }
+};
 
 
    const processExcelData = (excelRows) => {
-    if (!excelRows || excelRows.length < 2) return [];
-    
-    const results = [];
-    const dateColumns = [];
-    
-    // Identify columns that contain dates (starting from column 3)
-    for (let col = 3; col < excelRows[0].length; col++) {
-      if (excelRows[0][col] && typeof excelRows[0][col] === 'string' && 
-          excelRows[0][col].toLowerCase().includes('date')) {
-        dateColumns.push(col);
-      } else if (excelRows.some(row => isValidDate(row[col]))) {
-        dateColumns.push(col);
-      }
-    }
-
-    // Process each row
-    for (let i = 1; i < excelRows.length; i++) {
+  const results = [];
+  
+  // Skip header row (row 0) and process each customer row
+  for (let i = 1; i < excelRows.length; i++) {
+    try {
       const row = excelRows[i];
-      if (!row || !row[0]) continue;
+      if (!row || !row[1]) continue; // Skip empty rows (checking column B)
 
-      const customerInfo = extractCustomerInfo(row[0]);
+      // Extract customer info from columns B-E
+      const customerInfo = {
+        name: row[1] ? String(row[1]).trim() : '',
+        address: row[2] ? String(row[2]).trim() : '',
+        phone: row[3] ? formatPhoneNumber(String(row[3])) : '',
+        compactor: row[4] ? String(row[4]).trim() : '',
+        notes: [
+          row[5] ? String(row[5]).trim() : '',
+          row[6] ? String(row[6]).trim() : '',
+          row[7] ? String(row[7]).trim() : '',
+          row[8] ? String(row[8]).trim() : ''
+        ].filter(Boolean).join(' | ')
+      };
+
       if (!customerInfo.name) continue;
 
+      // Process dates from columns I onward (column 8)
       const dates = [];
-      // Check both identified date columns and columns 3+
-      const colsToCheck = dateColumns.length > 0 ? dateColumns : 
-                         Array.from({length: row.length - 3}, (_, j) => j + 3);
-      
-      for (const col of colsToCheck) {
-        if (row[col] && isValidDate(row[col])) {
-          dates.push(formatExcelDate(row[col]));
-        }
+      for (let j = 8; j < row.length; j++) {
+        const dateValue = parseExcelDate(row[j]);
+        if (dateValue) dates.push(dateValue);
       }
 
       if (dates.length > 0) {
@@ -332,14 +329,102 @@ const WorkScheduleManager = () => {
           address: customerInfo.address,
           phone: customerInfo.phone,
           dates: dates,
-          notes: [row[1], row[2]].filter(Boolean).join(' | ')
+          notes: customerInfo.notes,
+          compactor: customerInfo.compactor // Additional field
         });
       }
+    } catch (error) {
+      console.warn(`Skipping row ${i} due to error:`, error);
     }
+  }
 
-    return results;
-  };
+  return results;
+};
 
+
+const formatPhoneNumber = (phone) => {
+  if (!phone) return '';
+  
+  // Remove all non-digit characters
+  const cleaned = phone.replace(/\D/g, '');
+  
+  // Format as XXX-XXX-XXXX if 10 digits
+  if (cleaned.length === 10) {
+    return `${cleaned.substring(0, 3)}-${cleaned.substring(3, 6)}-${cleaned.substring(6)}`;
+  }
+  
+  // Return original if not standard US phone number
+  return phone;
+};
+
+const parseExcelDate = (value) => {
+  if (!value) return null;
+  
+  try {
+    let date;
+    
+    // Handle Excel serial dates (numbers)
+    if (typeof value === 'number') {
+      // Excel serial date (days since 1900)
+      date = new Date(Math.round((value - 25569) * 86400 * 1000);
+    } 
+    // Handle string dates
+    else if (typeof value === 'string') {
+      // Try parsing as ISO date
+      date = new Date(value);
+      
+      // If that fails, try common date formats
+      if (isNaN(date.getTime())) {
+        const formats = [
+          'M/d/yyyy', 'MM/dd/yyyy', 'M-d-yyyy', 'MM-dd-yyyy',
+          'M/d/yy', 'MM/dd/yy', 'M-d-yy', 'MM-dd-yy'
+        ];
+        
+        for (const format of formats) {
+          date = parseDateString(value, format);
+          if (!isNaN(date.getTime())) break;
+        }
+      }
+    }
+    // Handle Date objects directly
+    else if (value instanceof Date) {
+      date = value;
+    }
+    
+    if (!date || isNaN(date.getTime())) return null;
+    
+    // Format as YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch {
+    return null;
+  }
+};
+
+const parseDateString = (value, format) => {
+  const formatParts = format.split(/[\/\-]/);
+  const valueParts = value.split(/[\/\-]/);
+  
+  if (formatParts.length !== valueParts.length) return new Date(NaN);
+  
+  const dateParts = {};
+  for (let i = 0; i < formatParts.length; i++) {
+    const part = formatParts[i].toLowerCase();
+    if (part.includes('m')) dateParts.month = parseInt(valueParts[i]) - 1;
+    else if (part.includes('d')) dateParts.day = parseInt(valueParts[i]);
+    else if (part.includes('y')) {
+      dateParts.year = parseInt(valueParts[i]);
+      if (dateParts.year < 100) { // Handle 2-digit years
+        dateParts.year += dateParts.year < 50 ? 2000 : 1900;
+      }
+    }
+  }
+  
+  return new Date(dateParts.year, dateParts.month, dateParts.day);
+};
 
   const extractCustomerInfo = (str) => {
     const result = { name: '', address: '', phone: '' };
