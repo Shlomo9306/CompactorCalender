@@ -313,7 +313,7 @@ const openQuickAdd = (dateKey) => {
 
       // Process dates from columns I onward (column 8)
       const dates = [];
-      for (let j = 9; j < row.length; j++) {
+      for (let j = 8; j < row.length; j++) {
         const dateValue = parseExcelDate(row[j]);
         if (dateValue) dates.push(dateValue);
       }
