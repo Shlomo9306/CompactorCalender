@@ -366,7 +366,7 @@ const parseExcelDate = (value) => {
     // Handle Excel serial dates (numbers)
     if (typeof value === 'number') {
       // Excel serial date (days since 1900)
-      date = new Date(Math.round((value - 25569) * 86400 * 1000);
+      date = new Date(Math.round((value - 25569) * 86400 * 1000)); // Added missing parenthesis
     } 
     // Handle string dates
     else if (typeof value === 'string') {
