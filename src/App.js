@@ -144,13 +144,15 @@ const handleAddCustomer = () => {
 
 const formatDate = (dateStr) => {
   const date = new Date(dateStr);
+  // Adjust for timezone offset to prevent date shifting
+  date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
   return date.toLocaleDateString('en-US', { 
     weekday: 'short',
     month: 'short', 
-    day: 'numeric'
+    day: 'numeric',
+    year: 'numeric'  // Add year to the format
   });
 };
-
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleAddDate();
@@ -303,8 +305,7 @@ const openQuickAdd = (dateKey) => {
         notes: [
           row[5] ? String(row[5]).trim() : '',
           row[6] ? String(row[6]).trim() : '',
-          row[7] ? String(row[7]).trim() : '',
-          row[8] ? String(row[8]).trim() : ''
+          row[7] ? String(row[7]).trim() : ''
         ].filter(Boolean).join(' | ')
       };
 
@@ -312,7 +313,7 @@ const openQuickAdd = (dateKey) => {
 
       // Process dates from columns I onward (column 8)
       const dates = [];
-      for (let j = 8; j < row.length; j++) {
+      for (let j = 9; j < row.length; j++) {
         const dateValue = parseExcelDate(row[j]);
         if (dateValue) dates.push(dateValue);
       }
