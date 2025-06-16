@@ -16,13 +16,10 @@ const WorkScheduleManager = () => {
  const [importError, setImportError] = useState('');
 
   
-  const [scheduleData, setScheduleData] = useState(() => {
-    const savedData = localStorage.getItem('workScheduleData');
-    return savedData ? JSON.parse(savedData) : [
-      {
-      }
-    ];
-  });
+ const [scheduleData, setScheduleData] = useState(() => {
+  const savedData = localStorage.getItem('workScheduleData');
+  return savedData ? JSON.parse(savedData) : []; // Changed from [{}] to []
+});
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -564,7 +561,7 @@ const todayEvents = useMemo(() => {
 }, [eventsMap]);
 
   return (
-    <div className="max-w-7xl mx-auto p-6 bg-gray-50 min-h-screen">
+    <div className="mx-auto p-6 bg-gray-50 min-h-screen">
       <div className="bg-white rounded-lg shadow-lg p-6">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center space-x-4">
@@ -693,10 +690,24 @@ const todayEvents = useMemo(() => {
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-xl font-semibold text-gray-700 min-w-48 text-center">
-              {formatMonthYear(currentDate)}
-            </h2>
-            <button
+
+
+             <button
+        onClick={() => {
+          const newMonth = prompt("Enter month (1-12):", currentDate.getMonth() + 1);
+          const newYear = prompt("Enter year:", currentDate.getFullYear());
+          if (newMonth && newYear) {
+            const month = Math.max(1, Math.min(12, parseInt(newMonth))) - 1;
+            const year = parseInt(newYear);
+            setCurrentDate(new Date(year, month, 1));
+          }
+        }}
+        className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600"
+      >
+        {formatMonthYear(currentDate)}
+      </button>
+
+  <button
               onClick={() => navigateMonth(1)}
               className="p-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-600"
             >
