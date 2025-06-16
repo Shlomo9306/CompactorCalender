@@ -66,15 +66,13 @@ const WorkScheduleManager = () => {
       notes: ''
     });
     setDateInput('');
-    setEditingId(null);
-    setShowAddForm(false);
-    setShowQuickAdd(false);
-    setSelectedDate(null);
   };
 
-  const handleAddCustomer = () => {
-    setShowAddForm(true);
-    resetForm();
+const handleAddCustomer = () => {
+    resetForm(); // Reset the form first
+    setShowAddForm(true); // Then show the form
+    setShowQuickAdd(false); // Ensure quick add is hidden
+    setEditingId(null); // Ensure we're not in edit mode
   };
 
   const handleEditCustomer = (customer) => {
@@ -95,7 +93,7 @@ const WorkScheduleManager = () => {
     }
   };
 
-  const handleSaveCustomer = () => {
+ const handleSaveCustomer = () => {
     if (!formData.name.trim() || !formData.address.trim()) {
       alert('Please fill in at least the customer name and address.');
       return;
@@ -109,13 +107,14 @@ const WorkScheduleManager = () => {
       ));
     } else {
       const newCustomer = {
-        id: Date.now(),
+        id: Date.now(), // Generate a unique ID
         ...formData
       };
       setScheduleData(prev => [...prev, newCustomer]);
     }
     
     resetForm();
+    setShowAddForm(false);
   };
 
   const handleAddDate = () => {
@@ -623,6 +622,37 @@ const todayEvents = useMemo(() => {
             </button>
           </div>
         </div>
+
+ {/* Add Customer Form - make sure it's conditionally rendered */}
+        {showAddForm && (
+          <div className="mb-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {editingId ? 'Edit Customer' : 'Add New Customer'}
+            </h3>
+            
+            {/* Form fields... */}
+            
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  resetForm();
+                  setShowAddForm(false);
+                }}
+                className="px-4 py-2 text-gray-600 border border-gray-300 rounded hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCustomer}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <Save className="w-4 h-4" />
+                <span>Save</span>
+              </button>
+            </div>
+          </div>
+        )}
+
 
  {/* Sheet Selection Modal */}
         {importModalOpen && (
