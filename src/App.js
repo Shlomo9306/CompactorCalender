@@ -145,9 +145,9 @@ const WorkScheduleManager = () => {
     }));
   };
 
-  const formatDate = (dateStr) => {
+const formatDate = (dateStr) => {
   const date = new Date(dateStr);
-  // Adjust for timezone when displaying
+  // Add timezone offset to display correctly
   date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
   return date.toLocaleDateString('en-US', { 
     weekday: 'short',
@@ -185,13 +185,13 @@ const WorkScheduleManager = () => {
     });
   };
 
- const openQuickAdd = (dateKey) => {
-  setSelectedDate(dateKey);
-  // Parse and adjust the date for timezone
+const openQuickAdd = (dateKey) => {
   const date = new Date(dateKey);
+  // Adjust for timezone before setting
   date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
   const formattedDate = date.toISOString().split('T')[0];
   
+  setSelectedDate(formattedDate);
   setFormData({
     name: '',
     address: '',
@@ -365,26 +365,22 @@ const parseExcelDate = (value) => {
     
     // Handle Excel serial dates (numbers)
     if (typeof value === 'number') {
-      // Excel serial date (days since 1900)
-      date = new Date(Math.round((value - 25569) * 86400 * 1000)); // Added missing parenthesis
+      // Excel serial date (days since 1900) with timezone adjustment
+      const excelEpoch = new Date(1899, 11, 31);
+      const excelDate = new Date(excelEpoch.getTime() + (value * 24 * 60 * 60 * 1000));
+      
+      // Adjust for timezone offset
+      const timezoneOffset = excelDate.getTimezoneOffset() * 60000;
+      date = new Date(excelDate.getTime() + timezoneOffset);
     } 
     // Handle string dates
     else if (typeof value === 'string') {
-      // Try parsing as ISO date
-      date = new Date(value);
+      // Create date in local timezone
+      const [month, day, year] = value.split('/').map(Number);
+      date = new Date(year, month - 1, day);
       
-      // If that fails, try common date formats
-      if (isNaN(date.getTime())) {
-        const formats = [
-          'M/d/yyyy', 'MM/dd/yyyy', 'M-d-yyyy', 'MM-dd-yyyy',
-          'M/d/yy', 'MM/dd/yy', 'M-d-yy', 'MM-dd-yy'
-        ];
-        
-        for (const format of formats) {
-          date = parseDateString(value, format);
-          if (!isNaN(date.getTime())) break;
-        }
-      }
+      // Adjust for timezone
+      date.setHours(12, 0, 0, 0); // Set to noon to avoid DST issues
     }
     // Handle Date objects directly
     else if (value instanceof Date) {
@@ -482,36 +478,40 @@ const parseDateString = (value, format) => {
 
 
   const renderCalendarDays = () => {
-    const daysInMonth = getDaysInMonth(currentDate);
-    const firstDay = getFirstDayOfMonth(currentDate);
-    const days = [];
+  const daysInMonth = getDaysInMonth(currentDate);
+  const firstDay = getFirstDayOfMonth(currentDate);
+  const days = [];
+  
+  for (let i = 0; i < firstDay; i++) {
+    days.push(<div key={`empty-${i}`} className="min-h-40 border border-gray-200 bg-gray-50"></div>);
+  }
+  
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+    // Adjust for timezone when creating the key
+    date.setMinutes(date.getMinutes() + date.getTimezoneOffset());
+    const dateKey = date.toISOString().split('T')[0];
     
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="min-h-40 border border-gray-200 bg-gray-50"></div>);
-    }
+    const dayEvents = eventsMap.get(dateKey) || [];
     
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const dayEvents = eventsMap.get(dateKey) || [];
-      
-      const minHeight = Math.max(160, 40 + (dayEvents.length * 70));
-      
-      days.push(
-        <div 
-          key={day} 
-          className="border border-gray-200 p-2 bg-white hover:bg-gray-50 flex flex-col"
-          style={{ minHeight: `${minHeight}px` }}
-        >
-          <div className="flex justify-between items-center mb-2">
-            <div className="font-semibold text-sm text-gray-700">{day}</div>
-            <button
-              onClick={() => openQuickAdd(dateKey)}
-              className="p-1 rounded hover:bg-blue-100 text-blue-600"
-              title="Add work"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-          </div>
+    const minHeight = Math.max(160, 40 + (dayEvents.length * 70));
+    
+    days.push(
+      <div 
+        key={day} 
+        className="border border-gray-200 p-2 bg-white hover:bg-gray-50 flex flex-col"
+        style={{ minHeight: `${minHeight}px` }}
+      >
+        <div className="flex justify-between items-center mb-2">
+          <div className="font-semibold text-sm text-gray-700">{day}</div>
+          <button
+            onClick={() => openQuickAdd(dateKey)}
+            className="p-1 rounded hover:bg-blue-100 text-blue-600"
+            title="Add work"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
           <div className="space-y-1 flex-1">
             {dayEvents.map((event, index) => (
               <div
